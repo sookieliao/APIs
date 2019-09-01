@@ -1,0 +1,68 @@
+from geocode import getGeocodeLocation
+import json
+import httplib2
+
+import sys
+import codecs
+sys.stdout = codecs.getwriter('utf8')(sys.stdout)
+sys.stderr = codecs.getwriter('utf8')(sys.stderr)
+
+# PLEASE GO GET YOUR OWN CLIENT INFORMATION
+foursquare_client_id = "CLIENT_ID"
+foursquare_client_secret = "CLIENT_SECRET"
+
+
+def findARestaurant(mealType,location):
+  restaurants = {"Restaurant Name":"","Restaurant Address":"","Image":""}
+  #1. Use getGeocodeLocation to get the latitude and longitude coordinates of the location string.
+  lan, lon = getGeocodeLocation(location)
+
+  #2.  Use foursquare API to find a nearby restaurant with the latitude, longitude, and mealType strings.
+  #HINT: format for url will be something like https://api.foursquare.com/v2/venues/search?client_id=CLIENT_ID&client_secret=CLIENT_SECRET&v=20130815&ll=40.7,-74&query=sushi
+  url = ("https://api.foursquare.com/v2/venues/search?client_id=%s&client_secret=%s&v=%s&ll=%s,%s&query=%s"%(foursquare_client_id,foursquare_client_secret,"20180830",lan,lon,mealType))
+  h = httplib2.Http()
+  response , content = h.request(url,'GET')
+  body = json.loads(content)['response']
+
+  #3. Grab the first restaurant
+  restaurant = body['venues'][0]
+  restaurants['Restaurant Name']=restaurant['name']
+  print 'Restaurant Name: '+restaurants['Restaurant Name']
+  add_list=restaurant['location']['formattedAddress']
+  print 'Restaurant Address: ',
+  for a in range(len(add_list)):
+    print add_list[a],
+  #print 'Restaurant Address: '+restaurants['Restaurant Address']
+  venue_id = restaurant['id']
+  print '\n'
+
+  #4. Get a  300x300 picture of the restaurant using the venue_id (you can change this by altering the 300x300 value in the URL or replacing it with 'orginal' to get the original picture
+  rawPhoto_url = ("https://api.foursquare.com/v2/venues/%s/photos?v=20190830&client_id=%s&client_secret=%s"%(venue_id,foursquare_client_id,foursquare_client_secret))
+  rp_response, rf_content = h.request(rawPhoto_url,'GET')
+  if rp_response['status'] == '200':
+    contents = json.loads(rf_content)['response']
+    #6. If no image is available, insert default a image url
+    if len(contents['photos']['items'])>0:
+      #5. Grab the first image
+      prefix = contents['photos']['items'][0]['prefix']
+      suffix = contents['photos']['items'][0]['suffix']
+      restaurants['Image'] = ("%s300x300%s"%(prefix,suffix))
+      print 'Image: '+restaurants['Image']
+    else:
+      print 'Image: Image Not Found!'
+  else:
+    print 'Image: Image Not Found!'
+
+  print '\n \n \n '
+
+
+if __name__ == '__main__':
+  findARestaurant("Pizza", "Tokyo, Japan")
+  findARestaurant("Tacos", "Jakarta, Indonesia")
+  findARestaurant("Tapas", "Maputo, Mozambique")
+  findARestaurant("Falafel", "Cairo, Egypt")
+  findARestaurant("Spaghetti", "New Delhi, India")
+  findARestaurant("Cappuccino", "Geneva, Switzerland")
+  findARestaurant("Sushi", "Los Angeles, California")
+  findARestaurant("Steak", "La Paz, Bolivia")
+  findARestaurant("Gyros", "Sydney, Australia")
